@@ -17,13 +17,18 @@ done
 
 # Seed the configuration on first install without clobbering existing files.
 mkdir -p /data/adb/teesim
-# Adopt a keybox the user already set up for TrickyStore when we have none of our own.
-if [ ! -f /data/adb/teesim/keybox.xml ] && [ -f /data/adb/tricky_store/keybox.xml ]; then
-  ui_print "- Adopting the keybox from TrickyStore"
-  cp /data/adb/tricky_store/keybox.xml /data/adb/teesim/keybox.xml
+if [ ! -f /data/adb/teesim/keybox.xml ] && [ -f "$MODPATH/keybox.xml" ]; then
+  ui_print "- Installing the bundled keybox"
+  cp "$MODPATH/keybox.xml" /data/adb/teesim/keybox.xml
 fi
 if [ ! -f /data/adb/teesim/config.json ]; then
   cp "$MODPATH/config.default.json" /data/adb/teesim/config.json
+fi
+if [ ! -f /data/adb/teesim/boot_key.bin ]; then
+  head -c 32 /dev/urandom > /data/adb/teesim/boot_key.bin
+fi
+if [ ! -f /data/adb/teesim/boot_hash.bin ]; then
+  head -c 32 /dev/urandom > /data/adb/teesim/boot_hash.bin
 fi
 
 # Ship only the ABI this device runs; the other ABI's native libraries are dead weight here.

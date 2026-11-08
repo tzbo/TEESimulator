@@ -9,6 +9,8 @@ object Const {
 
     val configFile = File(DATA_DIR, "config.json")
     val harvestedFile = File(DATA_DIR, "harvested.json")
+    val bootKeyFile = File(DATA_DIR, "boot_key.bin")
+    val bootHashFile = File(DATA_DIR, "boot_hash.bin")
     /**
      * User edits to the harvest override layer (device ids, synthesized levels, an all-zero boot
      * key). Written by the WebUI, merged over the frozen captured harvest on every push.

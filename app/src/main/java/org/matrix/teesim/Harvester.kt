@@ -532,8 +532,10 @@ object Harvester {
                             overrides =
                                 fresh.overrides.filterKeys { k ->
                                     !(k == "verifiedBootKey" &&
+                                        readBootFile(Const.bootKeyFile) == null &&
                                         isUsableBootValue(existing.verifiedBootKey)) &&
                                         !(k == "verifiedBootHash" &&
+                                            readBootFile(Const.bootHashFile) == null &&
                                             !isUsableBootValue(fresh.verifiedBootHash) &&
                                             isUsableBootValue(existing.verifiedBootHash))
                                 },
@@ -581,10 +583,17 @@ object Harvester {
      * persisted record, or null on the very first harvest.
      */
     private fun freezeSynthBoot(effective: Record, prior: Record?): Record {
-        if (prior == null) return effective
         var overrides = effective.overrides
+        val fileKey = readBootFile(Const.bootKeyFile)
+        val fileHash = readBootFile(Const.bootHashFile)
 
-        if (!isUsableBootValue(effective.verifiedBootKey)) {
+        if (fileKey != null) {
+            val target =
+                bootOverride("verifiedBootKey", BootOverride(fileKey.toHex(), editable = false))
+            if (overrides["verifiedBootKey"] != target) {
+                overrides = overrides + ("verifiedBootKey" to target)
+            }
+        } else if (prior != null && !isUsableBootValue(effective.verifiedBootKey)) {
             prior.overrides["verifiedBootKey"]?.let { pinned ->
                 if (overrides["verifiedBootKey"] != pinned) {
                     overrides = overrides + ("verifiedBootKey" to pinned)
@@ -595,7 +604,13 @@ object Harvester {
             }
         }
 
-        if (!isUsableBootValue(effective.verifiedBootHash)) {
+        if (fileHash != null) {
+            val target =
+                bootOverride("verifiedBootHash", BootOverride(fileHash.toHex(), editable = false))
+            if (overrides["verifiedBootHash"] != target) {
+                overrides = overrides + ("verifiedBootHash" to target)
+            }
+        } else if (prior != null && !isUsableBootValue(effective.verifiedBootHash)) {
             val fresh = overrides["verifiedBootHash"]
             // fresh.editable is true only for the random fallback; a computed digest
             // (editable=false) is left live so it follows an OTA that changes the real vbmeta.
@@ -1312,6 +1327,9 @@ object Harvester {
      * hash — the honest captured value stands.
      */
     private fun bootHashOverride(raw: ByteArray): BootOverride? {
+        readBootFile(Const.bootHashFile)?.let {
+            return BootOverride(it.toHex(), editable = false)
+        }
         if (isUsableBootValue(raw)) return null
         VbMeta.computeDigest()?.let {
             SystemLogger.info(
@@ -1334,12 +1352,20 @@ object Harvester {
      * the raw capture is already usable.
      */
     private fun bootKeyOverride(raw: ByteArray): BootOverride? {
+        readBootFile(Const.bootKeyFile)?.let {
+            return BootOverride(it.toHex(), editable = false)
+        }
         if (isUsableBootValue(raw)) return null
         hexBytes(DeviceProps.prop("ro.boot.vbmeta.public_key_digest", ""))?.let {
             return BootOverride(it.toHex(), editable = false)
         }
         return BootOverride(fallbackBootKey().toHex(), editable = true)
     }
+
+    private fun readBootFile(file: File): ByteArray? =
+        runCatching { if (file.isFile) file.readBytes() else null }
+            .getOrNull()
+            ?.takeIf { isUsableBootValue(it) }
 
     /** A usable boot value: exactly 32 bytes and not all zero. */
     private fun isUsableBootValue(v: ByteArray?): Boolean =

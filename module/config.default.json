@@ -18,7 +18,10 @@
       "apps": [
         "com.google.android.gms",
         "com.android.vending",
-        "io.github.vvb2060.keyattestation"
+        "io.github.vvb2060.keyattestation",
+        "cn.damai",
+        "com.sankuai.movie",
+        "com.eltavine.duckdetector"
       ]
     }
   }
